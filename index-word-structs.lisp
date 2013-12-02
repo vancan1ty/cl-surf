@@ -12,9 +12,12 @@
   (title ())
   (keywords ())
   (description "")
+  (timeindexed ())
+  (keywords-freq-hash (make-hash-table :test #'equalp))
+  (nwords-in-kfh 0)
   (outgoinglinks ())
   (totnumwords 0)
-  (position-hash (make-hash-table :test #'equal)))
+  (position-hash (make-hash-table :test #'equalp)))
 ;;position-hash values are wordentry objects
 
 (defun write-file-index-to-file (fileindex filename)
@@ -33,9 +36,11 @@
 	      :title (getf ioraw :title)
 	      :keywords (getf ioraw :keywords)
 	      :description (getf ioraw :description)
+	      :timeindexed (getf ioraw :timeindexed)
+	      :keywords-freq-hash (alist-hash-table (getf ioraw :keywords-freq-plist) :test #'equalp)
 	      :outgoinglinks (getf ioraw :outgoinglinks)
 	      :totnumwords (getf ioraw :totnumwords)
-	      :position-hash (alist-hash-table (getf ioraw :position-plist) :test #'equal)))))
+	      :position-hash (alist-hash-table (getf ioraw :position-plist) :test #'equalp)))))
 
 (defun file-index-to-string (fileindex)
   (with-slots (url title keywords description outgoinglinks totnumwords position-hash) fileindex
@@ -44,9 +49,11 @@
      :title title
      :keywords keywords
      :description description
+     :timeindexed timeindexed
+     :keywords-freq-plist (hash-table-alist position-hash)
      :outgoinglinks outgoinglinks
      :totnumwords totnumwords
-     :position-plist (hash-table-alist position-hash) ;plists are smaller...!
+     :position-plist (hash-table-alist position-hash) 
      ))) 
 
 (defun write-file-index-to-stream (fileindex stream)
@@ -64,7 +71,7 @@
 (defun store-search-cache (fileindex-ht directory)
   (maphash 
    (lambda (key doc)
-       (store-file-index-to-disk doc))
+       (store-file-index-to-disk doc directory))
    fileindex-ht))
 
 (defun load-search-cache (fileindex-ht directory)

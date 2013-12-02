@@ -1,0 +1,12 @@
+(defpackage :com.cvberry.stringops
+  (:use :common-lisp :alexandria :com.cvberry.util)
+  (:import-from :split-sequence :split-sequence)
+  (:export :bootstrap-image
+	   :num-words-in-hash
+	   :*total-stat-store*
+	   :make-file-stat
+	   :standout-words-print
+	   :calc-standout-words))
+
+(in-package :com.cvberry.wordstat)
+

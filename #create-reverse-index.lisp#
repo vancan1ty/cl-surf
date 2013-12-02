@@ -58,7 +58,6 @@
     (add-to-freq-table (nth 0 wnw) mhash 0)
     (multiple-value-bind (keywords-hash nwords-in-kfh) 
 	(create-keywords-freq-hash title description keywords)
-      (break-transparent ())
       (make-file-index :url url 
 		       :title title 
 		       :keywords keywords 
@@ -87,13 +86,13 @@
 	   (setf pos (1+ pos))))
     pos))
 
-(defun create-keywords-freq-hash (title description keywords-string)
+(defun create-keywords-freq-hash (title description keywords-list)
   "creates a freq-hash of the header content of a page, for inclusion
    in file-index"
   (let* ((out (make-hash-table :test #'equalp))
 	(wlist (nconc (split-and-strip title) 
 		      (split-and-strip description)
-		      (split-and-strip keywords-string)))
+		      keywords-list))
 	(nwords (add-to-freq-table wlist out 0)))
     (values out nwords)
     ))

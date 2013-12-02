@@ -47,6 +47,13 @@
   (loop for doc in file-index-list collecting
        (cons doc (calc-doc-score stringquery doc tothash nwords-in-tothash))))
 
+(defun scoredocs-ht (stringquery findex-hashtable tothash nwords-in-tothash)
+  "returns an alist of file-index ptrs and their associated score"
+  (let ((out ()))
+  (maphash (lambda (dockey doc) 
+	     (setf out (cons (cons doc (calc-doc-score stringquery doc tothash nwords-in-tothash)) out))) findex-hashtable)
+  out))
+
 (defun get-top-matches (doc-score-alist start end)
   (let ((len (length doc-score-alist)))
     (if (> start len)
@@ -57,6 +64,10 @@
 
 (defun get-search-results (file-index-list stringquery start end)
   (get-top-matches (scoredocs stringquery file-index-list *tothash* *totnum*) start end))
+
+(defun get-search-results-ht (file-index-ht stringquery start end)
+  (get-top-matches (scoredocs-ht stringquery file-index-ht *tothash* *totnum*) start end))
+
 
 (defun disp-search-results (file-index-alist)
   "takes in sorted alist of form '((fileindex1 . score) (fileindex2 . score) ...)"

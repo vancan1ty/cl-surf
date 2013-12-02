@@ -178,13 +178,14 @@
   (loop for url in starturls nconc 
        (block loopblock
 	 (if (funcall index-site-p url visited-hash directory)
-	     (progn 
+	     (progn  
 	       (if baseurls
 		   (if (not (find (get-site-root url) baseurls :test #'equalp))
 		       (return-from loopblock nil))) ;this implements the "stay 
 	       (format t "indexing ~a~%" url)
-	       (let ((wpageindex (handler-case (index-web-page url)
-				   (error (text) (format t "error indexing ~a! ~a~%" url text)))))
+	       (let ((wpageindex (index-web-page url));(handler-case (index-web-page url)
+				   ;(error (text) (format t "error indexing ~a! ~a~%" url text))
+		       )
 		 (if wpageindex
 		     (with-slots (outgoinglinks url) wpageindex
 		       (store-file-index-to-disk wpageindex directory)
