@@ -2,21 +2,28 @@
 (ql:quickload :alexandria)
 ;;;require "berryutils.lisp"
 
-;;this file contains the file-index and wordentry structures
-;;and code which manages writing and reading them from disk,
-;;and creating them.
-
 (defpackage :com.cvberry.file-index
   (:nicknames :file-index)
-  (:use :common-lisp :alexandria :com.cvberry.util :html5-parser)
+  (:use :common-lisp :alexandria :com.cvberry.util)
   (:import-from :split-sequence :split-sequence)
   (:import-from :com.cvberry.wordstat :bootstrap-image *total-stat-store*)
   (:import-from :com.cvberry.stringops :split-and-strip)
   (:export :file-index
+	   :file-index-url
+	   :file-index-title
+	   :file-index-keywords
+	   :file-index-timeindexed
+	   :file-index-description
+	   :file-index-outgoinglinks
+	   :file-index-position-hash
+	   :file-index-keywords-freq-hash
+	   :wordentry-numpositions
 	   :read-file-index-from-disk
-	   :write-file-index-to-disk
+	   :read-file-index-from-file
+	   :store-file-index-to-disk
 	   :create-file-index
-	   :create-file-index-from-plain-file))
+	   :create-file-index-from-plain-file
+	   :pathescape))
 
 (in-package :com.cvberry.file-index)
 
@@ -35,9 +42,10 @@
 ;;position-hash values are wordentry objects
 
 ;;;PUBLIC METHODS
-(defun read-file-index-from-disk (url directory)
-  (read-file-index-from-file (concatenate 'string directory (pathescape url))))
-
+(defun read-file-index-from-disk (identifier directory &key (id-is-url t))
+  (if id-is-url
+      (read-file-index-from-file (concatenate 'string directory (pathescape identifier)))
+      (read-file-index-from-file (concatenate 'string directory identifier))))
 
 (defun store-file-index-to-disk (fileindex directory)
   "directory of form indexes/"
@@ -66,6 +74,27 @@
   "this one's for if for some reason you are indexing local files"
   (with-open-file (stream filename)
     (create-file-index (slurp-stream4 stream) filename)))
+
+(defun pathescape (str)
+  (substitute #\! #\* (substitute #\_ #\/ str)))
+
+
+(defun read-file-index-from-file (filename)
+  (with-open-file (stream filename)
+    (let ((ioraw ()))
+      (with-standard-io-syntax
+	(setf ioraw (read stream)))
+	     (make-file-index
+	      :url (getf ioraw :url)
+	      :title (getf ioraw :title)
+	      :keywords (getf ioraw :keywords)
+	      :description (getf ioraw :description)
+	      :timeindexed (getf ioraw :timeindexed)
+	      :keywords-freq-hash (alist-hash-table (getf ioraw :keywords-freq-plist) :test #'equalp)
+	      :nwords-in-kfh (getf ioraw :nwords-in-kfh)
+	      :outgoinglinks (getf ioraw :outgoinglinks)
+	      :totnumwords (getf ioraw :totnumwords)
+	      :position-hash (alist-hash-table (getf ioraw :position-plist) :test #'equalp)))))
 
 
 
@@ -120,25 +149,6 @@
      :position-plist (hash-table-alist position-hash) 
      ))) 
 
-(defun read-file-index-from-file (filename)
-  (with-open-file (stream filename)
-    (let ((ioraw ()))
-      (with-standard-io-syntax
-	(setf ioraw (read stream)))
-	     (make-file-index
-	      :url (getf ioraw :url)
-	      :title (getf ioraw :title)
-	      :keywords (getf ioraw :keywords)
-	      :description (getf ioraw :description)
-	      :timeindexed (getf ioraw :timeindexed)
-	      :keywords-freq-hash (alist-hash-table (getf ioraw :keywords-freq-plist) :test #'equalp)
-	      :nwords-in-kfh (getf ioraw :nwords-in-kfh)
-	      :outgoinglinks (getf ioraw :outgoinglinks)
-	      :totnumwords (getf ioraw :totnumwords)
-	      :position-hash (alist-hash-table (getf ioraw :position-plist) :test #'equalp)))))
-
-(defun pathescape (str)
-  (substitute #\! #\* (substitute #\_ #\/ str)))
 
 (defun create-keywords-freq-hash (title description keywords-list)
   "creates a freq-hash of the header content of a page, for inclusion
@@ -166,3 +176,5 @@
 	   (setf pos (1+ pos))))
     pos))
 
+(let ((pack (find-package :file-index)))
+  (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))

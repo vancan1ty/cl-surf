@@ -1,13 +1,18 @@
 (ql:quickload :split-sequence)
 (ql:quickload :alexandria)
 (load "berryutils.lisp")
+;;;word statistics package
+;;;in breeze, used only to calculate the weight of search terms
 
 (defpackage :com.cvberry.wordstat
+  (:nicknames :wordstat)
   (:use :common-lisp :alexandria :com.cvberry.util)
   (:import-from :split-sequence :split-sequence)
   (:export :bootstrap-image
 	   :num-words-in-hash
 	   :*total-stat-store*
+	   :*tothash*
+	   :*totnum*
 	   :make-file-stat
 	   :standout-words-print
 	   :calc-standout-words))
@@ -255,6 +260,7 @@
 ;;;////////////////////////////////STUFF TO GET IMAGE SET UP USEFULLY
 (defparameter *tot-file-stats* ())
 (defparameter *tothash* ())
+(defparameter *totnum* ())
 (defparameter *total-stat-store* ())
 
 (defun bootstrap-image ()
@@ -263,7 +269,8 @@
   (setf *brownstat* (make-instance 'file-stat :frequency-hash *tothash* :identifier "Brown Corpus Frequency Statistics"))
   (let* ((wordlist (calc-wordlist *tothash*))
 	 (numwords (length wordlist)))
-    (setf *total-stat-store* (make-totwordlist :numwords numwords :wordlist wordlist :wordhash *tothash*))))
+    (setf *total-stat-store* (make-totwordlist :numwords numwords :wordlist wordlist :wordhash *tothash*))
+    (setf *totnum* numwords)))
 
 
 (defparameter *standouts* ())

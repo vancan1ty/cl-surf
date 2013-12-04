@@ -1,30 +1,38 @@
-(in-package :com.cvberry.search)
-;(ql:quickload :closure-html)
-(ql:quickload :cxml)
-(ql:quickload :cxml-dom)
-(ql:quickload :drakma)
+(defpackage :com.cvberry.crawler
+  (:nicknames :crawler)
+  (:use :common-lisp :alexandria :com.cvberry.util :html5-parser)
+  (:import-from :com.cvberry.file-index 
+		:store-file-index-to-disk 
+		:create-file-index
+		:file-index-url
+		:file-index-outgoinglinks)
+  (:import-from :split-sequence :split-sequence)
+  (:import-from :com.cvberry.stringops :split-and-strip)
+  (:import-from :cl-ppcre :scan)
+  (:export :index-sites-wrapper
+	   :create-standard-index-site-p
+	   ))
 
-(defun domview (node nestlevel)
-  (if (not node)
-      ()
-      (progn
-	(loop for i from 1 to nestlevel do
-	     (format t " "))
-	(format t "name: ~a~10ttype: ~a~10tattributes: ~a~10tvalue: ~a~%" 
-		(dom:node-name node)
-		(dom:node-type node)
-		(dom:attributes node)
-		(dom:node-value node))
-	(dom:map-node-list (lambda (n-node) (domview n-node (1+ nestlevel)))
-			   (dom:child-nodes node)))))
+(in-package :com.cvberry.crawler)
 
-(defun dom-map (fn node)
-  (if (not node)
-      ()
-      (progn
-	(funcall fn node) ;apply the function to the node
-	(dom:map-node-list (lambda (n-node) (dom-map fn n-node))
-		   (dom:child-nodes node))))) 
+(defun index-sites-wrapper (starturls maxdepth directory index-site-p &key (stay-on-sites nil))
+  (let ((visited-hash (make-hash-table :test #'equalp)) ;use the urls as keys, the full object as values
+	(baseurls (if stay-on-sites
+		      (mapcar (lambda (url) (get-site-root url)) starturls)
+		      nil)))
+    (recursive-index-sites starturls visited-hash index-site-p 0 maxdepth directory :baseurls baseurls)
+    visited-hash
+    ))
+
+(defmacro create-standard-index-site-p (time-between)
+  "creates a lambda which returns true if we should visit site again, false if not.
+   visited-hash is of form {url => timelastvisited}.  time-between is time between visits to page!"
+  `(lambda (url visited-hash directory)
+     (multiple-value-bind (v exists) (gethash url visited-hash) 
+       (if exists
+	   (if (> (- (get-universal-time) v) ,time-between)
+	       t)
+       t))))
 
 (defun flex-dom-map2 (recurse-p fn node)
   "fn is applied to each visited nodee
@@ -46,17 +54,6 @@
 (defun remove-newlines (str)
   (remove-if (lambda (ch) (or (eql ch #\return)
 			      (eql ch #\linefeed))) str))
-
-(defun xml-interactive-suggestions ()
-  (setf *cvberrydom2* (parse-html5 (drakma:http-request "http://cvberry.com")))
-  (setf *nytimes-chess* (parse-html5 (drakma:http-request "http://www.nytimes.com/2013/11/24/business/for-chess-a-would-be-white-knight.html?hp&_r=0" ))))
-
-(defun scraperdemo (node nodeurl)
-  (com.cvberry.wordstat:standout-words-print 
-   (subseq (com.cvberry.wordstat:calc-standout-words 
-    (slot-value (com.cvberry.wordstat:MAKE-FILE-STAT (scrapetext2 node) nodeurl) 'com.cvberry.wordstat::frequency-hash) 
-    *tothash* 
-    *totnum* ) 0 10)))
 
 (defun get-title (dom-node)
   (flex-dom-map2 
@@ -109,8 +106,8 @@
   (if (or (eql (length link) 0)
 	  (eql (elt link 0) #\#))
       (return-from process-site-link nil))
-  (if (scan "^([a-zA-Z])+:.*$" link) ;then we do have a uri in front of link!
-      (if (not (scan "^http:.*$" link)) ;then we don't support the protocol!
+  (if (ppcre:scan "^([a-zA-Z])+:.*$" link) ;then we do have a uri in front of link!
+      (if (not (ppcre:scan "^http:.*$" link)) ;then we don't support the protocol!
 	  (return-from process-site-link nil)))
   (if (and (>= (length link) 5)
 	   (equalp (subseq link 0 5) "http:"))  ;if it's an absolute link return it unharmed
@@ -121,14 +118,14 @@
 		(concatenate 'string rooturl link)))
 	  (let ((fixedurl (if (equal #\/ (last-elt currenturl))  ;else this is relative link
 			      currenturl
-			      (if (scan "^http://.*/.$*" currenturl) ;then I can strip down w/ slash
-				  (multiple-value-bind (start end) (scan ".*/" currenturl)
+			      (if (ppcre:scan "^http://.*/.$*" currenturl) ;then I can strip down w/ slash
+				  (multiple-value-bind (start end) (ppcre:scan ".*/" currenturl)
 				    (subseq currenturl start end))
 				  (concatenate 'string currenturl "/")))))
 	    (concatenate 'string fixedurl link)))))
 
 (defun get-site-root (url)
-  (let ((regexresults (multiple-value-list (scan "(^http://[^/]*).*$" url))))
+  (let ((regexresults (multiple-value-list (ppcre:scan "(^http://[^/]*).*$" url))))
     (if (not (equal regexresults '(nil)))
 	(let* ((rootstart 0)
 	       (rootend (elt (elt regexresults 3) 0) ))
@@ -142,9 +139,9 @@
   (multiple-value-bind (body status headers uri) (drakma:http-request url :connection-timeout 5)
     (if (eql status 200)
 	(let ((content-type (cdr (assoc :CONTENT-TYPE headers))))
-	  (if (scan "text/html" content-type)
+	  (if (ppcre:scan "text/html" content-type)
 	      (return-from index-web-page (index-html-file body url)))
-	  (if (scan "text/plain" content-type)
+	  (if (ppcre:scan "text/plain" content-type)
 	      (return-from index-web-page (index-text-file body url)))))))
 
 (defun index-html-file (html url)
@@ -160,17 +157,6 @@
 (defun index-text-file (text url)
   (create-file-index text url))
 
-
-(defmacro create-standard-index-site-p (time-between)
-  "creates a lambda which returns true if we should visit site again, false if not.
-   visited-hash is of form {url => timelastvisited}.  time-between is time between visits to page!"
-  `(lambda (url visited-hash directory)
-     (multiple-value-bind (v exists) (gethash url visited-hash) 
-       (if exists
-	   (if (> (- (get-universal-time) v) ,time-between)
-	       t)
-       t))))
-
 (defun recursive-index-sites (starturls visited-hash index-site-p current-depth maxdepth directory &key (baseurls nil))
   "visited-hash is a reference to a hash table to which sites are added
    across recursive runs...
@@ -178,29 +164,22 @@
   (loop for url in starturls nconc 
        (block loopblock
 	 (if (funcall index-site-p url visited-hash directory)
-	     (progn 
+	     (progn  
 	       (if baseurls
 		   (if (not (find (get-site-root url) baseurls :test #'equalp))
 		       (return-from loopblock nil))) ;this implements the "stay 
 	       (format t "indexing ~a~%" url)
-	       (let ((wpageindex (handler-case (index-web-page url)
-				   (error (text) (format t "error indexing ~a! ~a~%" url text)))))
+	       (let ((wpageindex (index-web-page url));(handler-case (index-web-page url)
+				   ;(error (text) (format t "error indexing ~a! ~a~%" url text))
+		       )
 		 (if wpageindex
-		     (with-slots (outgoinglinks url) wpageindex
-		       (store-file-index-to-disk wpageindex directory)
-		       (setf (gethash url visited-hash) (get-universal-time))
+		     (progn 
+		       (file-index:store-file-index-to-disk wpageindex directory)
+		       (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
 		       (if (not (equal current-depth maxdepth))
-			   (recursive-index-sites outgoinglinks visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls)))
+			   (recursive-index-sites (file-index-outgoinglinks wpageindex) visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls)))
 		     (format t "~a was not indexed.  Likely incorrect MIME type ~%" url))))))))
 
-(defun index-sites-wrapper (starturls maxdepth directory index-site-p &key (stay-on-sites nil))
-  (let ((visited-hash (make-hash-table :test #'equalp)) ;use the urls as keys, the full object as values
-	(baseurls (if stay-on-sites
-		      (mapcar (lambda (url) (get-site-root url)) starturls)
-		      nil)))
-    (recursive-index-sites starturls visited-hash index-site-p 0 maxdepth directory :baseurls baseurls)
-    visited-hash
-    ))
 
 (defun standard-recurse-p (node)
   "returns true only if you aren't trying to recurse into a script,
@@ -209,15 +188,22 @@
 	   (equalp (node-name node) "style")
 	   (equalp (node-name node) "noscript"))))
 
-(defun crawler-interactive-suggestions ()
-  (setf *visited-hash2* (index-sites-wrapper '("http://weitz.de/drakma/") 1))
-  (store-search-cache *visited-hash2*)
-  (defparameter *visited-hash3* (make-hash-table :test #'equalp))
-  (load-search-cache *visited-hash3*))
 
-;;  (defun generate-wordlist-ht (directory)
-;;    (let out (make-hash-table :test #'equalp)
-;;   (loop for file in directory do
-;;        (
-;; )
-       
+
+;;;INTERACTIVE SUGGESTIONS
+;; (defun crawler-interactive-suggestions ()
+;;   (setf *visited-hash2* (index-sites-wrapper '("http://weitz.de/drakma/") 1))
+;;   (store-search-cache *visited-hash2*)
+;;   (defparameter *visited-hash3* (make-hash-table :test #'equalp))
+;;   (load-search-cache *visited-hash3*))
+
+;; (defun xml-interactive-suggestions ()
+;;   (setf *cvberrydom2* (parse-html5 (drakma:http-request "http://cvberry.com")))
+;;   (setf *nytimes-chess* (parse-html5 (drakma:http-request "http://www.nytimes.com/2013/11/24/business/for-chess-a-would-be-white-knight.html?hp&_r=0" ))))
+
+;; (defun scraperdemo (node nodeurl)
+;;   (com.cvberry.wordstat:standout-words-print 
+;;    (subseq (com.cvberry.wordstat:calc-standout-words 
+;;     (slot-value (com.cvberry.wordstat:MAKE-FILE-STAT (scrapetext2 node) nodeurl) 'com.cvberry.wordstat::frequency-hash) 
+;;     *tothash* 
+;;     *totnum* ) 0 10)))

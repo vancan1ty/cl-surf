@@ -1,10 +1,27 @@
 ;gigamonkeys unit testing!
-(load "create-reverse-index.lisp")
-(load "index-word-structs.lisp")
-(load "search-scorer.lisp")
-(in-package :com.cvberry.search)
+
+(defpackage :com.cvberry.breeze-test
+  (:nicknames :test)
+  (:use :common-lisp 
+	:alexandria 
+	:com.cvberry.util 
+	:html5-parser 
+	:com.cvberry.file-index 
+	:com.cvberry.crawler 
+	:com.cvberry.searcher 
+	:com.cvberry.controller)
+  (:import-from :split-sequence :split-sequence)
+  (:import-from :com.cvberry.stringops :split-and-strip)
+  (:import-from :cl-ppcre :scan)
+  (:export :run-tests))
+
+(in-package :com.cvberry.breeze-test)
+
+
 (load "gigamonkeys.lisp")
+
 (load "crawler.lisp")
+(load "file-index.lisp")
 
 (deftest run-tests ()
   (if (not *bootstrap-complete*)
@@ -74,11 +91,13 @@
 	    '("http://www.cvberry.com" "http://www.weitz.de"))
     ))
 
-(deftest test-create-keywords-freq ()
+(deftest test-create-keywords-freq-hash ()
   (check
     (equalp (hash-table-alist 
 	    (create-keywords-freq-hash "This is my site" "A site about programming" "programming, lisp, c++, thinking about life")) 
-	   '(("my" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (2))) ("site" . #S(WORDENTRY :NUMPOSITIONS 2 :POSITIONS (5 3))) ("about" . #S(WORDENTRY :NUMPOSITIONS 2 :POSITIONS (12 6))) ("lisp" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (9))) ("life" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (13))) ("c" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (10))) ("a" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (4))) ("thinking" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (11))) ("this" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (0))) ("is" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (1))) ("programming" . #S(WORDENTRY :NUMPOSITIONS 2 :POSITIONS (8 7)))))))
+	   '(("my" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (2))) ("site" . #S(WORDENTRY :NUMPOSITIONS 2 :POSITIONS (5 3))) ("about" . #S(WORDENTRY :NUMPOSITIONS 2 :POSITIONS (12 6))) ("lisp" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (9))) ("life" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (13))) ("c" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (10))) ("a" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (4))) ("thinking" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (11))) ("this" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (0))) ("is" . #S(WORDENTRY :NUMPOSITIONS 1 :POSITIONS (1))) ("programming" . #S(WORDENTRY :NUMPOSITIONS 2 :POSITIONS (8 7)))))
+ (create-file-index "this is an index" "http://example.com" "site made by me" "a very good site" "bad,good,right,wrong")
+    ))
 
 
 ;(let ((ilist ()))
