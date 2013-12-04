@@ -61,15 +61,15 @@
     (make-site-index-info :visited-hash mvisited-hash :memcache mmemcache :directory mdirectory)))
 
 (defun restore-search ()
-  (setf (site-index-info-visited-hash *tinfo*) 
+  (let ((visitedhash
 	(alist-hash-table 
 	 (loop for file in 
 	      (directory (concatenate 'string (getf *currentsite* :directory) "*.*")) collect
 	      (let ((filecontents (with-open-file (stream file) (with-standard-io-syntax (read stream)))))
 		(cons (getf filecontents :url) (getf filecontents :timeindexed))))))
-  (setf (site-index-info-memcache *tinfo*)
-	(mchandler:init-memcache (concatenate 'string (getf *currentsite* :directory) "*.*")))
-  (setf (site-index-info-directory *tinfo*) (getf *currentsite* :directory)))
+  (memcache (mchandler:init-memcache (concatenate 'string (getf *currentsite* :directory) "*.*")))
+  (directory (getf *currentsite* :directory)))
+  (setf *tinfo* (make-site-index-info :visited-hash visitedhash :memcache memcache :directory directory))))
 
 
 (defun run-search (siteindexinfo querytext start end)

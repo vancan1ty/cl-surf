@@ -103,26 +103,34 @@
 
 (defun process-site-link (link currenturl)
   ;;first check if this is even an http link
+  (handler-case 
+      (progn
   (if (or (eql (length link) 0)
 	  (eql (elt link 0) #\#))
       (return-from process-site-link nil))
   (if (ppcre:scan "^([a-zA-Z])+:.*$" link) ;then we do have a uri in front of link!
       (if (not (ppcre:scan "^http:.*$" link)) ;then we don't support the protocol!
 	  (return-from process-site-link nil)))
+  (if (ppcre:scan "#" link) ;don't support in page links
+      (return-from process-site-link nil))
   (if (and (>= (length link) 5)
 	   (equalp (subseq link 0 5) "http:"))  ;if it's an absolute link return it unharmed
       link 
-      (if (equalp (elt link 0) #\/) ;if starts with slash return root+link
-	  (let ((rooturl (get-site-root currenturl))) 
-	    (if rooturl
-		(concatenate 'string rooturl link)))
-	  (let ((fixedurl (if (equal #\/ (last-elt currenturl))  ;else this is relative link
-			      currenturl
-			      (if (ppcre:scan "^http://.*/.$*" currenturl) ;then I can strip down w/ slash
-				  (multiple-value-bind (start end) (ppcre:scan ".*/" currenturl)
-				    (subseq currenturl start end))
-				  (concatenate 'string currenturl "/")))))
-	    (concatenate 'string fixedurl link)))))
+      (with-output-to-string (collector) (puri:RENDER-URI (puri:merge-uris (puri:parse-uri link) (puri:parse-uri currenturl)) collector))))
+    (error (text) (progn (format t "error in process-link ~a" text) nil))))
+;;else let puri work its magic
+      ;; (if (equalp (elt link 0) #\/) ;if starts with slash return root+link
+      ;; 	  (let ((rooturl (get-site-root currenturl))) 
+      ;; 	    (if rooturl
+      ;; 		(concatenate 'string rooturl link)))
+      ;; 	  (let ((fixedurl (if (equal #\/ (last-elt currenturl))  ;else this is relative link
+      ;; 			      currenturl
+      ;; 			      (if (ppcre:scan "^http://.*/.$*" currenturl) ;then I can strip down w/ slash
+      ;; 				  (multiple-value-bind (start end) (ppcre:scan ".*/" currenturl)
+      ;; 				    (subseq currenturl start end))
+      ;; 				  (concatenate 'string currenturl "/")))))
+      ;; 	    (concatenate 'string fixedurl link)))
+
 
 (defun get-site-root (url)
   (let ((regexresults (multiple-value-list (ppcre:scan "(^http://[^/]*).*$" url))))
@@ -157,28 +165,34 @@
 (defun index-text-file (text url)
   (create-file-index text url))
 
+
 (defun recursive-index-sites (starturls visited-hash index-site-p current-depth maxdepth directory &key (baseurls nil))
   "visited-hash is a reference to a hash table to which sites are added
    across recursive runs...
    if baseurls is specified, the crawler never leaves those top level domains"
-  (loop for url in starturls nconc 
-       (block loopblock
-	 (if (funcall index-site-p url visited-hash directory)
-	     (progn  
-	       (if baseurls
-		   (if (not (find (get-site-root url) baseurls :test #'equalp))
-		       (return-from loopblock nil))) ;this implements the "stay 
-	       (format t "indexing ~a~%" url)
-	       (let ((wpageindex (index-web-page url));(handler-case (index-web-page url)
-				   ;(error (text) (format t "error indexing ~a! ~a~%" url text))
-		       )
-		 (if wpageindex
-		     (progn 
-		       (file-index:store-file-index-to-disk wpageindex directory)
-		       (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
-		       (if (not (equal current-depth maxdepth))
-			   (recursive-index-sites (file-index-outgoinglinks wpageindex) visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls)))
-		     (format t "~a was not indexed.  Likely incorrect MIME type ~%" url))))))))
+  (break-transparent current-depth)
+  (let ((collectedlinks (break-transparent (loop for url in starturls nconc
+	 (block loopblock
+	   (if (scan "CBB" url)
+	       (return-from loopblock nil))
+	   (if (funcall index-site-p url visited-hash directory)
+	       (progn  
+		 (if baseurls
+		     (if (not (find (get-site-root url) baseurls :test #'equalp))
+			 (return-from loopblock nil))) ;this implements the "stay 
+		 (format t "indexing ~a~%" url)
+		 (let ((wpageindex (handler-case (index-web-page url)
+				     (error (text) (format t "error indexing ~a! ~a~%" url text)))
+			 ))
+		   (if wpageindex
+		       (progn 
+			 (file-index:store-file-index-to-disk wpageindex directory)
+			 (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
+			 (file-index-outgoinglinks wpageindex)
+			 )
+		       (format t "~a was not indexed.  Likely incorrect MIME type ~%" url))))))))))
+    (if (not (equal current-depth maxdepth))
+			     (recursive-index-sites collectedlinks visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls))))
 
 
 (defun standard-recurse-p (node)

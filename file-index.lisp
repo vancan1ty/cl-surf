@@ -1,7 +1,3 @@
-(ql:quickload :split-sequence)
-(ql:quickload :alexandria)
-;;;require "berryutils.lisp"
-
 (defpackage :com.cvberry.file-index
   (:nicknames :file-index)
   (:use :common-lisp :alexandria :com.cvberry.util)

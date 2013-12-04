@@ -1,35 +1,31 @@
 ;gigamonkeys unit testing!
 
-(defpackage :com.cvberry.breeze-test
-  (:nicknames :test)
+(defpackage :com.cvberry.breeze-tester
+  (:nicknames :tester)
   (:use :common-lisp 
 	:alexandria 
 	:com.cvberry.util 
 	:html5-parser 
-	:com.cvberry.file-index 
-	:com.cvberry.crawler 
+	:com.cvberry.file-index
+	:com.cvberry.stringops
+	:com.cvberry.crawler
 	:com.cvberry.searcher 
-	:com.cvberry.controller)
+	)
   (:import-from :split-sequence :split-sequence)
   (:import-from :com.cvberry.stringops :split-and-strip)
   (:import-from :cl-ppcre :scan)
   (:export :run-tests))
 
-(in-package :com.cvberry.breeze-test)
+;;now import various symbols into current package...
+(import 'com.cvberry.crawler::process-site-link)
+(import 'com.cvberry.crawler::get-site-root)
+(import 'com.cvberry.searcher::get-top-matches)
+(import 'com.cvberry.stringops::strip-word)
 
-
+(in-package :com.cvberry.breeze-tester)
 (load "gigamonkeys.lisp")
 
-(load "crawler.lisp")
-(load "file-index.lisp")
-
 (deftest run-tests ()
-  (if (not *bootstrap-complete*)
-      (progn
-	(bootstrap-image)
-	(interactive-suggestions)
-	(setf *bootstrap-complete* t)))
-
   (test-split-and-strip)
   (test-file-index-read-write)
   (test-add-to-freq-table)

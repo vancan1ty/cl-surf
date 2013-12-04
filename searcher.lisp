@@ -1,16 +1,18 @@
 (defpackage :com.cvberry.searcher
   (:nicknames :searcher)
-  (:use :common-lisp :alexandria :com.cvberry.util :file-index)
+  (:use :common-lisp :alexandria :com.cvberry.util :cl-who :com.cvberry.file-index)
   (:import-from :split-sequence :split-sequence)
-  (:import-from :com.cvberry.wordstat :bootstrap-image *total-stat-store* *tothash* *totnum*)
+  (:import-from :com.cvberry.wordstat :bootstrap-image :*total-stat-store* :*tothash* :*totnum*)
   (:import-from :com.cvberry.stringops :split-and-strip)
   (:export :disp-search-results 
 	   :word-in-fileindex-p
-	   :run-text-search))
+	   :run-text-search
+	   :html-search-results
+	   :run-html-search))
 
 (in-package :com.cvberry.searcher)
 
-;example!!
+					;example!!
 ;; (disp-search-results 
 ;;  (get-search-results 
 ;;   (sort-intersect-results 
@@ -19,17 +21,17 @@
 ;;   "programming clojure" 0 5))
 ;; ;
 
-;(update-word->docs-hash *tword->docshash* (directory "indexes4/*.*"))
+					;(update-word->docs-hash *tword->docshash* (directory "indexes4/*.*"))
 
 (defun run-text-search (memcache directory querystring start end)
   (let ((querylist (remove-dup-list-items (split-and-strip querystring) :test #'equalp)))
-  (disp-search-results 
-   (get-search-results 
-    (sort-intersect-results 
-     (intersect-memcache memcache 
-			 querylist)
-     querylist directory)
-    querystring start end))))
+    (disp-search-results 
+     (get-search-results 
+      (sort-intersect-results 
+       (intersect-memcache memcache 
+			   querylist)
+       querylist directory)
+      querystring start end))))
 
 (defun disp-search-results (file-index-alist)
   "takes in sorted alist of form '((fileindex1 . score) (fileindex2 . score) ...)"
@@ -38,6 +40,30 @@
 			(title file-index-title) 
 			(description file-index-description)) findex
 	 (format t "~7a=== ~a~%~a~%~a~%~%" score title description url))))
+
+(defun html-search-results (file-index-alist)
+  (loop for (findex . score) in file-index-alist do
+       (with-accessors ((url file-index-url) 
+			(title file-index-title) 
+			(description file-index-description)) findex
+	 (progn
+	   (with-html-output (*standard-output* nil :indent t)
+	   (:li (:h3 (fmt "~a" title))
+		(:p (fmt "score: ~a" score))
+		(:a :href url (fmt "~a" url))
+		(:p (fmt "~a" description))
+		))))))
+
+(defun run-html-search (memcache directory querystring start end)
+  (let ((querylist (remove-dup-list-items (split-and-strip querystring) :test #'equalp)))
+    (html-search-results 
+     (get-search-results 
+      (sort-intersect-results 
+       (intersect-memcache memcache 
+			   querylist)
+       querylist directory)
+      querystring start end))))
+
 
 (defun get-search-results (file-index-list stringquery start end)
   (get-top-matches (scoredocs stringquery file-index-list wordstat:*tothash* wordstat:*totnum*) start end))
@@ -52,7 +78,7 @@
 	 (freq-results (word-freq-in-file-index querylist fileindex 1))
 	 (weight-results (calc-word-weights querylist tothash nwordsin-tothash)))
     (loop for (w1 . f) in freq-results
-	  for (w2 . w) in weight-results summing
+       for (w2 . w) in weight-results summing
 	 (* (sqrt f) w 5))))
 
 (defun word-in-fileindex-p (word fileindex)
@@ -61,7 +87,6 @@
     (if (or wordinkeys wordinbody)
 	t
 	nil)))
-
 
 (defun get-top-matches (doc-score-alist start end)
   (let ((len (length doc-score-alist)))
@@ -73,7 +98,7 @@
 
 (defun sort-intersect-results (filelist words-list directory)
   (let ((fileindex-list (loop for url in filelist collect
-			     (read-file-index-from-file (concatenate 'string directory (pathescape url))))))
+			     (file-index:read-file-index-from-file (concatenate 'string directory (file-index:pathescape url))))))
     fileindex-list))
 
 (defun intersect-memcache (memcache words-list)
@@ -124,33 +149,33 @@
 ;;   (setf *totnum* (slot-value *total-stat-store* :numwords)))
 
 
-;(write-file-index-to-file *wsj-iran* (concatenate 'string (slot-value *wsj-iran* (concatenate 'string "indexes/" 'url))))
+					;(write-file-index-to-file *wsj-iran* (concatenate 'string (slot-value *wsj-iran* (concatenate 'string "indexes/" 'url))))
 
-;example!!
-;(disp-search-results (get-search-results (sort-intersect-results (intersect-word->docs-hash *tword->docshash* '("programming" "clojure")) '("programming" "clojure") "indexes4/") "programming clojure" 0 5))
-;(update-word->docs-hash *tword->docshash* (directory "indexes4/*.*"))
+					;example!!
+					;(disp-search-results (get-search-results (sort-intersect-results (intersect-word->docs-hash *tword->docshash* '("programming" "clojure")) '("programming" "clojure") "indexes4/") "programming clojure" 0 5))
+					;(update-word->docs-hash *tword->docshash* (directory "indexes4/*.*"))
 
 ;;;PRIVATE STUFF BELOW!
 (defun word-freq-in-file-index (querylist fileindex keywords-weight)
   "returns alist with word frequency ratio for each word
    in fileindex.  now includes, and weights, keywords (so not really plain frequency anymore)"
   (let ((orderedset (remove-dup-list-items querylist)))
-  (with-accessors ((url file-index-url) 
-		   (file file-index-file)
-		   (totnumwords file-index-totnumwords)
-		   (position-hash file-index-position-hash)
-		   (keywords-freq-hash file-index-keywords-freq-hash)
-		   (nwords-in-kfh file-index-nwords-in-kfh)) fileindex
-    (loop for word in orderedset collecting
-	 (multiple-value-bind (v exists) (gethash word position-hash)
-	   (multiple-value-bind (vk existsk) (gethash word keywords-freq-hash)
-	     (cons word (+ 
-			 (if exists
-			     (/ (wordentry-numpositions v) totnumwords)
-			     0)
-			 (if existsk
-			     (* keywords-weight (/ (wordentry-numpositions vk) nwords-in-kfh))
-			     0)))))))))
+    (with-accessors ((url file-index-url) 
+		     (file file-index-file)
+		     (totnumwords file-index-totnumwords)
+		     (position-hash file-index-position-hash)
+		     (keywords-freq-hash file-index-keywords-freq-hash)
+		     (nwords-in-kfh file-index-nwords-in-kfh)) fileindex
+      (loop for word in orderedset collecting
+	   (multiple-value-bind (v exists) (gethash word position-hash)
+	     (multiple-value-bind (vk existsk) (gethash word keywords-freq-hash)
+	       (cons word (+ 
+			   (if exists
+			       (/ (wordentry-numpositions v) totnumwords)
+			       0)
+			   (if existsk
+			       (* keywords-weight (/ (wordentry-numpositions vk) nwords-in-kfh))
+			       0)))))))))
 
 (defun calc-word-weights (querylist bighash num-words-in-bighash)
   "returns weighted alist of standout words from query.
