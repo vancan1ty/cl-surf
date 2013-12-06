@@ -7,20 +7,22 @@
 		:file-index-url
 		:file-index-outgoinglinks)
   (:import-from :split-sequence :split-sequence)
-  (:import-from :com.cvberry.stringops :split-and-strip)
+  (:import-from :com.cvberry.stringops :split-and-strip :is-prefix :get-leading-text)
+  (:import-from :mchandler :update-memcache-single-file)
   (:import-from :cl-ppcre :scan)
   (:export :index-sites-wrapper
 	   :create-standard-index-site-p
+	   :index-single-web-page
 	   ))
 
 (in-package :com.cvberry.crawler)
 
-(defun index-sites-wrapper (starturls maxdepth directory index-site-p &key (stay-on-sites nil))
+(defun index-sites-wrapper (starturls maxdepth directory index-site-p &key (stay-on-sites nil) (directories-to-avoid nil))
   (let ((visited-hash (make-hash-table :test #'equalp)) ;use the urls as keys, the full object as values
 	(baseurls (if stay-on-sites
 		      (mapcar (lambda (url) (get-site-root url)) starturls)
 		      nil)))
-    (recursive-index-sites starturls visited-hash index-site-p 0 maxdepth directory :baseurls baseurls)
+    (recursive-index-sites starturls visited-hash index-site-p 0 maxdepth directory :baseurls baseurls :directories-to-avoid directories-to-avoid)
     visited-hash
     ))
 
@@ -43,6 +45,13 @@
 	(if (funcall recurse-p node)
 	    (html5-parser:element-map-children (lambda (n-node) (flex-dom-map2 recurse-p fn n-node)) node)))))
 
+(defun gettag (top-node tag) 
+  (flex-dom-map2 
+   #'standard-recurse-p
+   (lambda (node) (if (equalp (html5-parser:node-name node) tag)
+		      (return-from gettag node)))
+   top-node))
+
 (defun scrapetext2 (top-node)
   (remove-newlines (with-output-to-string (s) 
     (flex-dom-map2 
@@ -51,9 +60,30 @@
 			(format s " ~a " (html5-parser:node-value node))))
      top-node))))
 
+
 (defun remove-newlines (str)
   (remove-if (lambda (ch) (or (eql ch #\return)
 			      (eql ch #\linefeed))) str))
+
+(defun remove-excess-newlines (text)
+  (coerce (remove nil 
+		  (loop for char across text 
+		     with innewline = nil collect
+		       (if innewline
+			   (if (not (or (eql char #\newline)
+					(eql char #\linefeed))) ;then back to normal node
+			       (progn
+				 (setf innewline nil)
+				 char))
+			   (if (or (eql char #\newline)
+				   (eql char #\linefeed))
+			       (progn
+				 (setf innewline t)
+				 #\Space)
+			       char)))) 
+	  'string))
+
+
 
 (defun get-title (dom-node)
   (flex-dom-map2 
@@ -146,11 +176,27 @@
   "returns nil if the contents of url are not of mime type text/html or text/plain"
   (multiple-value-bind (body status headers uri) (drakma:http-request url :connection-timeout 5)
     (if (eql status 200)
-	(let ((content-type (cdr (assoc :CONTENT-TYPE headers))))
+	(let* ((content-type (cdr (assoc :CONTENT-TYPE headers))))
 	  (if (ppcre:scan "text/html" content-type)
 	      (return-from index-web-page (index-html-file body url)))
 	  (if (ppcre:scan "text/plain" content-type)
 	      (return-from index-web-page (index-text-file body url)))))))
+
+(defun get-tip-text (top-dom-node description fulltext)
+  (let ((leadingtextpossible (scrapetext2 (gettag (gettag top-dom-node "body") "p"))))
+    (if (< (length leadingtextpossible) 15)
+	(setf leadingtextpossible description))
+    (if (< (length leadingtextpossible) 15) ;if it's STILL < 15
+	(setf leadingtextpossible fulltext))
+    (get-leading-text leadingtextpossible 200)))
+
+(defun index-single-web-page (memcache url visited-hash directory)
+  (let ((wpageindex (index-web-page url)))
+    (if wpageindex
+	(progn 
+	  (let* ((filename (file-index:store-file-index-to-disk wpageindex directory)))
+	  (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
+	  (update-memcache-single-file memcache filename))))))
 
 (defun index-html-file (html url)
   (let ((dom-model (parse-html5 html)))
@@ -159,40 +205,45 @@
 	     (description (get-description dom-model))
 	     (keywords (get-keywords dom-model))
 	     (links (get-links dom-model url))
-	     (textcontent (scrapetext2 dom-model)))
-	(create-file-index textcontent url title description keywords links)))))
+	     ;this is a hack below.  set the leading text of the site
+	     ;to the contents of the first "p" in "body"
+	     (textcontent (scrapetext2 (gettag dom-model "body")))
+	     (tiptext (get-tip-text dom-model description textcontent))) 
+	(create-file-index textcontent url title description keywords links tiptext)))))
 
 (defun index-text-file (text url)
   (create-file-index text url))
 
-
-(defun recursive-index-sites (starturls visited-hash index-site-p current-depth maxdepth directory &key (baseurls nil))
+(defun recursive-index-sites (starturls visited-hash index-site-p current-depth maxdepth directory &key (baseurls nil) (directories-to-avoid nil))
   "visited-hash is a reference to a hash table to which sites are added
    across recursive runs...
    if baseurls is specified, the crawler never leaves those top level domains"
-  (break-transparent current-depth)
-  (let ((collectedlinks (break-transparent (loop for url in starturls nconc
-	 (block loopblock
-	   (if (scan "CBB" url)
-	       (return-from loopblock nil))
-	   (if (funcall index-site-p url visited-hash directory)
-	       (progn  
-		 (if baseurls
-		     (if (not (find (get-site-root url) baseurls :test #'equalp))
-			 (return-from loopblock nil))) ;this implements the "stay 
-		 (format t "indexing ~a~%" url)
-		 (let ((wpageindex (handler-case (index-web-page url)
-				     (error (text) (format t "error indexing ~a! ~a~%" url text)))
-			 ))
-		   (if wpageindex
-		       (progn 
-			 (file-index:store-file-index-to-disk wpageindex directory)
-			 (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
-			 (file-index-outgoinglinks wpageindex)
-			 )
-		       (format t "~a was not indexed.  Likely incorrect MIME type ~%" url))))))))))
+					;(break-transparent current-depth)
+  (let ((collectedlinks 
+	 (loop for url in starturls nconc
+	      (block loopblock
+		(loop for baddir in directories-to-avoid do
+		     (cons baddir url)
+		     (if (is-prefix baddir url)
+			 (return-from loopblock nil)))
+		(if (funcall index-site-p url visited-hash directory)
+		    (progn  
+		      (if baseurls
+			  (if (not (find (get-site-root url) baseurls :test #'equalp))
+			      (return-from loopblock nil))) ;this implements the "stay 
+		      (format t "indexing ~a~%" url)
+		      (let ((wpageindex (handler-case (index-web-page url)
+					  (error (text) (format t "error indexing ~a! ~a~%" url text)))
+			      ))
+			(if wpageindex
+			    (progn 
+			      (file-index:store-file-index-to-disk wpageindex directory)
+			      (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
+			      (file-index-outgoinglinks wpageindex)
+			      )
+			    (format t "~a was not indexed.  Likely incorrect MIME type ~%" url)))))))))
     (if (not (equal current-depth maxdepth))
-			     (recursive-index-sites collectedlinks visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls))))
+	(recursive-index-sites collectedlinks visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls :directories-to-avoid directories-to-avoid))))
 
 
 (defun standard-recurse-p (node)

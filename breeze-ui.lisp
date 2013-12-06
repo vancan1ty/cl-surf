@@ -24,37 +24,74 @@
 
 ;;(setf hunchentoot:*catch-errors-p* nil) 
 
-(define-easy-handler (easy-demop :uri "/search" :default-request-type :both)
-    ((searchquery :request-type :post )) 
-  ;;set numinputs and truthtableinput to correct values for post and get scenarios
-  (let* ((searchtext (if searchquery searchquery)) 
+;; (define-easy-handler (easy-demop :uri "/search" :default-request-type :both)
+;;     ((searchquery :request-type :post )) 
+;;   ;;set numinputs and truthtableinput to correct values for post and get scenarios
+;;   (let* ((searchtext (if searchquery searchquery)) 
 
-	 (output (controller:run-search *tinfo* searchtext 0 10)))
-    (log-message* :INFO "**********post input:~%searchquery: ~a~%" searchquery)
+;; 	 (output (controller:run-search *tinfo* searchtext 0 10)))
+;;     (log-message* :INFO "**********post input:~%searchquery: ~a~%" searchquery)
 
-    ;(log-message* :INFO "doing post! output: ~a " output)
-    output))
+;;     ;(log-message* :INFO "doing post! output: ~a " output)
+;;     output))
 
 (define-easy-handler (easy-demo :uri "/search"
                                 :default-request-type :get)
-    ((query :parameter-type 'string))
+    ((query :parameter-type 'string)
+     (start :parameter-type 'integer)
+     (end :parameter-type 'integer))
+  (if (eql start nil)
+      (progn (setf start 0)
+	     (setf end 10)))
+;<link href="/library/skin/tool_base.css" type="text/css" rel "stylesheet" media ="all" />
   (with-html-output-to-string (*standard-output* nil :prologue t :indent t)
     (:html
-     (:head (:title "cl-breeze web search"))
+     (:head (:title "cl-breeze web search")
+	    (:link :href "styles.css" :type "text/css" :rel "stylesheet" nil))
      (:body
-      :style "margin: 20px"
-      (:h1 (fmt "searching ~a..." (getf controller:*currentsite* :siteroot)))
-      (:p (:form
-           :method :get
-           (:table
-            :border 0 :cellpadding 5 :cellspacing 0
-            (:tr 
-                 (:td (:input :type :text
-                                    :name "query"
-                                    :value query))
-                 (:td (:input :type :submit :value "Submit"))))))
-      (:p "The string you entered was: <br>" (if query
-						 (run-html-search controller:*tinfo* query 0 10) ""))))))
+      (:div :id "wrapper"
+	    (:div :id "toparea"
+		  (:h1 "cl-breeze")
+		  (:p (:form
+		       :method :get
+		       (:input :type :text
+			       :id "querybox"
+			       :name "query"
+			       :value query)
+		       (:input :id "submitbutton" :type :submit :value "Search")))
+		  (:div :style "clear: both")
+		  )
+	    (:div :id "infoline" 
+		  (:p (fmt "searching ~a..." (getf controller:*currentsite* :siteroot)))
+		  )
+	    (:div :id "resultsarea"
+		  (:p (if query
+					  (run-html-search controller:*tinfo* query start end) "")))
+	    
+	    (if (and query
+		     (> (length query) 0))
+		(htm (:div :id "bottomcontrols" 
+			   (if (>= start 10) 
+			       (htm (:form :action "/search" :method "GET"
+					   (:input :type "submit" :class "navbutton" :value "Prev")
+					   (:input :type "hidden" :name "query" :value query)
+					   (:input :type "hidden" :name "start" :type "hidden" :value (- start 10))
+					   (:input :type "hidden" :name "end" :type "hidden" :value end))))
+			   
+			   (:form :action "/search" :method "GET"
+				  (:input :type "submit" :class "navbutton" :value "Next")
+				  (:input :type "hidden" :name "query" :value query)
+				  (:input :type "hidden" :name "start" :type "hidden" :value end)
+				  (:input :type "hidden" :name "end" :type "hidden" :value (+ 10 end))) (:span :id "positionticker" (fmt "displaying ~a to ~a" start end))))))))))
+
+    ;; <form action="/html/" method="POST">
+    ;;       <!-- <a rel="next" href="/html/?q=search&amp;t=D&amp;v=l&amp;l=us-en&amp;p=1&amp;s=30&amp;o=json&amp;dc=18&amp;api=d.js">Next Page &gt;</a> //-->
+    ;;       <input type="submit" class='navbutton' value="Next">
+    ;;       <input type="hidden" name="q" value="search">
+    ;;       <input type="hidden" name="s" value="30">
+    ;;       <input type="hidden" name="o" value="json">
+    ;;       <input type="hidden" name="dc" value="18">
+    ;;       <input type="hidden" name="api" value="d.js">
 
 
 (defvar *macceptor* (make-instance 'hunchentoot:easy-acceptor :port 8080 
@@ -63,11 +100,11 @@
 				   :message-log-destination *terminal-io*))
 (hunchentoot:start *macceptor*)
 
-(defun getKMapsOnly (truthtable numinputs)
-  (let* ((kmapoutput (handler-case (html-create-k-maps truthtable numinputs)
-		       (malformed-truth-table-error (se) (concatenate 'string "<br> ERROR: " (text se)))))
-	 (generated-html (if (eql (length kmapoutput) 0) "Invalid truth table input!" kmapoutput)))
-    generated-html))
+;; (defun getKMapsOnly (truthtable numinputs)
+;;   (let* ((kmapoutput (handler-case (html-create-k-maps truthtable numinputs)
+;; 		       (malformed-truth-table-error (se) (concatenate 'string "<br> ERROR: " (text se)))))
+;; 	 (generated-html (if (eql (length kmapoutput) 0) "Invalid truth table input!" kmapoutput)))
+;;     generated-html))
 
 ;; old code I had which demonstrated filling template
 ;; (defun getKMaps (truthtable numinputs)

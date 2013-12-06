@@ -31,46 +31,64 @@
 (defparameter cvberrysite
   (list :siteroot "http://www.cvberry.com"
 	:stayonsite t
-	:depth 3
-	:directory "cvberryindex/"))
+	:depth 5
+	:directory "cvberryindex/"
+	:directories-to-avoid nil
+))
 
 (defparameter sossite 
   (list :siteroot "http://www.sosmath.com"
 	:stayonsite t
 	:depth 4
-	:directory "sosindex/"))
+	:directory "sosindex/"
+	:directories-to-avoid '("http://www.sosmath.com/CBB" "http://www.sosmath.com/memberlist")
+))
+
+(defun make-directories-to-avoid-list (root dirs)
+  (loop for dir in dirs collect
+       (concatenate 'string root dir)))
+
+(defparameter clikisite
+  (list :siteroot "http://www.cliki.net"
+	:stayonsite t
+	:depth 6
+	:directory "clikiindex2/"
+	:directories-to-avoid '("http://www.cliki.net/site")))
 
 
-(defparameter *currentsite* sossite)
+(defparameter *currentsite* clikisite)
 
 (defun setup-search-wrapper ()
   (setf *tinfo* (setup-search 
 			      (getf *currentsite* :siteroot) 
 			      (getf *currentsite* :directory) 
 			      (getf *currentsite* :stayonsite) 
-			      (getf *currentsite* :depth))))
+			      (getf *currentsite* :depth)
+			      (getf *currentsite* :directories-to-avoid))))
 
-(defun setup-search (baseurl directory stayonsite depth)
+(defun setup-search (baseurl directory stayonsite depth &optional (directories-to-avoid nil))
   (if (not (boundp '*tothash*))
       (com.cvberry.wordstat:bootstrap-image))
   (let* (;(mdirectory (concatenate 'string "index_" (pathescape baseurl) "/"))
 	 (mdirectory directory)
 	 (mvisited-hash
-	  (crawler:index-sites-wrapper (list baseurl) depth mdirectory (crawler:create-standard-index-site-p 1000) :stay-on-sites t))
+	  (crawler:index-sites-wrapper (list baseurl) depth mdirectory (crawler:create-standard-index-site-p 100000000) :stay-on-sites stayonsite :directories-to-avoid directories-to-avoid))
 	 (mmemcache (mchandler:init-memcache (concatenate 'string mdirectory "*.*"))))
     (make-site-index-info :visited-hash mvisited-hash :memcache mmemcache :directory mdirectory)))
 
 (defun restore-search ()
-  (setf (site-index-info-visited-hash *tinfo*) 
+  (let ((visitedhash
 	(alist-hash-table 
 	 (loop for file in 
 	      (directory (concatenate 'string (getf *currentsite* :directory) "*.*")) collect
 	      (let ((filecontents (with-open-file (stream file) (with-standard-io-syntax (read stream)))))
 		(cons (getf filecontents :url) (getf filecontents :timeindexed))))))
-  (setf (site-index-info-memcache *tinfo*)
-	(mchandler:init-memcache (concatenate 'string (getf *currentsite* :directory) "*.*")))
-  (setf (site-index-info-directory *tinfo*) (getf *currentsite* :directory)))
+  (memcache (mchandler:init-memcache (concatenate 'string (getf *currentsite* :directory) "*.*")))
+  (directory (getf *currentsite* :directory)))
+  (setf *tinfo* (make-site-index-info :visited-hash visitedhash :memcache memcache :directory directory))))
 
+(defun index-single-web-page-wrapper (url)
+  (crawler:index-single-web-page (site-index-info-memcache *tinfo*) url (site-index-info-visited-hash *tinfo*) (site-index-info-directory *tinfo*)))
 
 (defun run-search (siteindexinfo querytext start end)
   (with-slots (visited-hash memcache directory) siteindexinfo

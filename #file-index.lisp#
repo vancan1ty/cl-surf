@@ -121,9 +121,11 @@
 
 ;;;STUFF THAT CAN PROBABLY STAY PRIVATE
 (defun write-file-index-to-file (fileindex filename)
+  "returns filename"
   (with-open-file (out filename :direction :output :if-exists :supersede)
     (with-standard-io-syntax
-      (write-file-index-to-stream fileindex out ))))
+      (write-file-index-to-stream fileindex out)))
+  filename)
 
 (defun write-file-index-to-stream (fileindex stream)
   "takes in list of file-stat objects, a filename, and header text

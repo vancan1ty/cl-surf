@@ -1,7 +1,8 @@
 (defpackage :com.cvberry.stringops
   (:use :common-lisp :alexandria :com.cvberry.util)
   (:import-from :split-sequence :split-sequence)
-  (:export  :split-and-strip))
+  (:import-from :cl-ppcre :scan)
+  (:export  :split-and-strip :is-prefix :get-leading-text))
 
 (in-package :com.cvberry.stringops)
 
@@ -37,3 +38,16 @@
       (setf word ""))
   (string-downcase word)) ;if we get this far...
 
+(defun is-prefix (prefix word)
+  (let ((lpre (length prefix))
+	(lw (length word)))
+    (if (< lw lpre)
+	nil
+	(equalp (subseq prefix 0 lpre) (subseq word 0 lpre)))))
+
+(defun get-leading-text (text numcharacters)
+  "returns all the complete words before that number of characters" 
+  (if (> (length text) numcharacters)
+      (multiple-value-bind (start endp1) (scan ".* " (subseq text 0 numcharacters))
+	(subseq text start (1- endp1)))
+      text))

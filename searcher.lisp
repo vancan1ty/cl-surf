@@ -8,20 +8,10 @@
 	   :word-in-fileindex-p
 	   :run-text-search
 	   :html-search-results
-	   :run-html-search))
+	   :run-html-search
+	   :calc-doc-score))
 
 (in-package :com.cvberry.searcher)
-
-					;example!!
-;; (disp-search-results 
-;;  (get-search-results 
-;;   (sort-intersect-results 
-;;    (intersect-word->docs-hash *tword->docshash* '("programming" "clojure")) 
-;;    '("programming" "clojure") "indexes4/") 
-;;   "programming clojure" 0 5))
-;; ;
-
-					;(update-word->docs-hash *tword->docshash* (directory "indexes4/*.*"))
 
 (defun run-text-search (memcache directory querystring start end)
   (let ((querylist (remove-dup-list-items (split-and-strip querystring) :test #'equalp)))
@@ -41,21 +31,28 @@
 			(description file-index-description)) findex
 	 (format t "~7a=== ~a~%~a~%~a~%~%" score title description url))))
 
+(defvar *noresultsstr* "No results for that search!")
+
+      
 (defun html-search-results (file-index-alist)
+  (if (not file-index-alist)
+      (return-from html-search-results (with-html-output (*standard-output* nil) (:p (fmt "~a" *noresultsstr*)))))
   (loop for (findex . score) in file-index-alist do
        (with-accessors ((url file-index-url) 
 			(title file-index-title) 
-			(description file-index-description)) findex
+			(description file-index-description)
+			(leadingtext file-index-leadingtext)) findex
 	 (progn
 	   (with-html-output (*standard-output* nil :indent t)
-	   (:li (:h3 (fmt "~a" title))
-		(:p (fmt "score: ~a" score))
-		(:a :href url (fmt "~a" url))
-		(:p (fmt "~a" description))
-		))))))
+	     (:li (:h3 (fmt "~a" title))
+		  (:span :class "sitestat" (:a :href url (fmt "~a" url)) (:p (fmt "score: ~a" score))) 
+		  (:p (fmt "~a..." leadingtext))
+		  ))))))
 
 (defun run-html-search (memcache directory querystring start end)
   (let ((querylist (remove-dup-list-items (split-and-strip querystring) :test #'equalp)))
+    (if (not querylist)
+	(return-from run-html-search (with-html-output (*standard-output* nil) (:p (fmt "~a" *noresultsstr*)))))
     (html-search-results 
      (get-search-results 
       (sort-intersect-results 
@@ -77,8 +74,8 @@
   (let* ((querylist (split-and-strip stringquery))
 	 (freq-results (word-freq-in-file-index querylist fileindex 1))
 	 (weight-results (calc-word-weights querylist tothash nwordsin-tothash)))
-    (loop for (w1 . f) in freq-results
-       for (w2 . w) in weight-results summing
+    (loop for (nil . f) in freq-results
+       for (nil . w) in weight-results summing
 	 (* (sqrt f) w 5))))
 
 (defun word-in-fileindex-p (word fileindex)
@@ -110,7 +107,7 @@
 			  (if (or
 			       (not wordhash) ;then no documents contain that word!
 			       (eql 0 (hash-table-count wordhash)))
-			      nil
+			      (return-from intersect-memcache nil)
 			      (cons word (hash-table-count wordhash)))))))
     (let* ((sortedwlist (sort wordslist #'< :key #'cdr))
 	   (minword (car (elt sortedwlist 0)))
@@ -128,6 +125,35 @@
       fileupperlist)))
 
 
+
+
+;; (defun intersect-memcache2 (memcache words-list)
+;;   "returns list of urls which contain all words in words-list.
+;;    w/ exception that if a word is not found anywhere it is ignored..."  
+;;   ;;this first step tells us the word with the fewest number of matching docs
+;;   (let ((wordslist (loop for word in words-list collect
+;; 			(let ((wordhash (gethash word memcache)))
+;; 			  (if (or
+;; 			       (not wordhash) ;then no documents contain that word!
+;; 			       (eql 0 (hash-table-count wordhash)))
+;; 			      nil
+;; 			      (cons word (hash-table-count wordhash)))))))
+;;     (let* ((sortedwlist (sort wordslist #'< :key #'cdr))
+;; 	   (minword (car (elt sortedwlist 0)))
+;; 	   (fileupperlist ()))
+;;       (if (not minword)
+;; 	  (return-from intersect-memcache nil))
+;;       (maphash (lambda (url inword) (if inword
+;; 					(setf fileupperlist (cons url fileupperlist))))
+;; 	       (gethash minword memcache))
+;;       (loop for (nword . num) in sortedwlist do
+;; 	   (setf fileupperlist (remove nil (loop for url in fileupperlist collect
+;; 						(if (eql t (gethash url (gethash nword memcache)))
+;; 						    url
+;; 						    nil)))))
+;;       fileupperlist)))
+
+
 ;;; Must design an algorithm to add a sequential factor to the doc score^
 ;; (defun calc-sequential-factor (querylist fileindex)
 ;;   (if (not querylist)
@@ -138,22 +164,6 @@
 ;; 	       )))))
 
 
-(defparameter *bootstrap-complete* nil)
-
-;; (defun interactive-suggestions ()
-;;   (setf *wsj-iran* (create-file-index-from-plain-file "/home/vancan1ty/shared/1332Project/wsjiranarticle.txt"))
-;;   (setf *wsj-financial* (create-file-index-from-plain-file "/home/vancan1ty/shared/1332Project/wsjfinancialarticle.txt"))
-;;   (setf *nytimes-iran* (create-file-index-from-plain-file "/home/vancan1ty/shared/1332Project/NYTimesIranArticle.txt"))
-;;   (setf *wp-iran* (create-file-index-from-plain-file "/home/vancan1ty/shared/1332Project/washingtonpost_old_iran_article.txt"))
-;;   (setf *tothash* (slot-value *total-stat-store* :wordhash))
-;;   (setf *totnum* (slot-value *total-stat-store* :numwords)))
-
-
-					;(write-file-index-to-file *wsj-iran* (concatenate 'string (slot-value *wsj-iran* (concatenate 'string "indexes/" 'url))))
-
-					;example!!
-					;(disp-search-results (get-search-results (sort-intersect-results (intersect-word->docs-hash *tword->docshash* '("programming" "clojure")) '("programming" "clojure") "indexes4/") "programming clojure" 0 5))
-					;(update-word->docs-hash *tword->docshash* (directory "indexes4/*.*"))
 
 ;;;PRIVATE STUFF BELOW!
 (defun word-freq-in-file-index (querylist fileindex keywords-weight)
