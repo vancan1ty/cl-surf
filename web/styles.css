@@ -1,0 +1,85 @@
+
+* {
+}
+
+body {
+    background-color: #cdd;
+}
+
+#wrapper{
+
+    margin-left: auto;
+    margin-right: auto;
+    width: 900px;
+    padding: 20px;
+    background-color: white;
+
+}
+
+#toparea {
+    background-color: #FF8100;
+    margin: -20px -20px 0px -20px;
+    padding: 20px 20px 0px 20px;
+}
+
+#toparea h1 {
+    float: left;
+    display: inline-block;
+    font-style: italic;
+    font-family: arial, sans-serif;
+    line-height: 35px;
+    margin: 10px 55px 10px 0px;
+    color: #FFE;
+/*    text-shadow:#eee 0px 1px 0, #111 0 -1px 0; */
+   text-shadow: 1px 1px 1px rgba(255,255,255,0.6);
+}
+
+#toparea p {
+    float: right;
+    display: inline-block;
+    line-height: 50px;
+    margin: 10px;
+}
+
+#querybox  {
+/*    position: relative;
+    right: 67px;
+    z-index: 2;
+    float: right; */
+    background: none repeat scroll 0% 0% rgb(255, 255, 255);
+    color: rgb(34, 34, 34);
+    width: 500px;
+    height: 24px;
+    padding: 5px 6px 4px;
+    margin: 10px 0px 0px 10px;
+    outline: medium none;
+    border: 1px solid rgb(141, 141, 141);
+    font-size: 18px;
+    border-radius: 3px 0px 0px 3px;
+   /* box-shadow: 1px 1px 2px rgb(153, 153, 153) inset; */
+}
+
+#submitbutton {
+    height: 35px;
+    padding: 5px 6px 4px;
+    margin: 10px 0px 0px;
+    background-color: #0024B3;
+    color: white;
+    font-size: 18px;
+    font-style: bold;
+    text-shadow: 0px 2px 3px #555;
+    border: 1px solid rgb(141, 141, 141);
+    border-radius: 3px 3px 3px 3px;
+}
+
+#infoline {
+    float: right;
+}
+
+#bottomcontrols form {
+    display: inline;
+}
+
+#positionticker {
+    margin-left: 10px;
+}
