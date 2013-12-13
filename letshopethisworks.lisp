@@ -1,2 +1,0 @@
-
-(:HEADER "Awesomeness" ((:IDENTIFIER "test2" :FREQUENCY-DATA ("question" 1 "Thi" 1 "What" 1 "best" 1 "the" 1 "love" 1 "a" 1 "Perhap" 1 "that" 1 "answer" 1 "good" 1 "dead" 1 "it" 1 "is" 4)) (:IDENTIFIER "test2" :FREQUENCY-DATA ("The" 1 "not" 1 "the" 1 "end" 2 "is" 1)) (:IDENTIFIER "test2" :FREQUENCY-DATA ("The" 1 "the" 1 "MIGHT" 1 "end" 2 "BE" 1)))) 
