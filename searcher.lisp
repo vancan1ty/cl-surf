@@ -4,6 +4,7 @@
   (:import-from :split-sequence :split-sequence)
   (:import-from :com.cvberry.wordstat :bootstrap-image :*total-stat-store* :*tothash* :*totnum*)
   (:import-from :com.cvberry.stringops :split-and-strip)
+  (:import-from :cl-ppcre :scan :regex-replace)
   (:export :disp-search-results 
 	   :word-in-fileindex-p
 	   :run-text-search
@@ -94,9 +95,11 @@
     (subseq (sort doc-score-alist #'> :key #'cdr) start end)))
 
 (defun sort-intersect-results (filelist words-list directory)
+  (declare (ignore words-list))
   (let ((fileindex-list (loop for url in filelist collect
 			     (file-index:read-file-index-from-file (concatenate 'string directory (file-index:pathescape url))))))
     fileindex-list))
+
 
 (defun intersect-memcache (memcache words-list)
   "returns list of urls which contain all words in words-list.
@@ -117,7 +120,7 @@
       (maphash (lambda (url inword) (if inword
 					(setf fileupperlist (cons url fileupperlist))))
 	       (gethash minword memcache))
-      (loop for (nword . num) in sortedwlist do
+      (loop for (nword . nil) in sortedwlist do
 	   (setf fileupperlist (remove nil (loop for url in fileupperlist collect
 						(if (eql t (gethash url (gethash nword memcache)))
 						    url
@@ -194,6 +197,7 @@
   (let ((orderedset (remove-dup-list-items querylist)))
     (loop for word in orderedset collect
 	 (let* ((bigvalue (multiple-value-bind (v exists) (gethash word bighash)
+			    (declare (ignore exists))
 			    (if v v 0)))
 		(bigratio (* (/ bigvalue num-words-in-bighash) 100)))
 	   (cons word (sqrt (if (eql bigratio 0)

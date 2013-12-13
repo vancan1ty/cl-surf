@@ -37,6 +37,7 @@
 	      (url (file-index:file-index-url fileindex)))
 	 ;;loop for each word in file's position-hash and see if the words-hash properly links it
 	 (maphash (lambda (word wordentry) 
+		    (declare (ignore wordentry))
 		    (if (eql nil (gethash word memcache))
 			(setf (gethash word memcache) 
 			      (make-hash-table :test #'equalp))) 
@@ -45,6 +46,7 @@
 		  (file-index:file-index-position-hash fileindex))
 	 ;;now do the same thing for keywords-freq-hash
 	 (maphash (lambda (word wordentry) 
+		    (declare (ignore wordentry))
 		    (if (eql nil (gethash word memcache))
 			(setf (gethash word memcache) 
 			      (make-hash-table :test #'equalp))) 

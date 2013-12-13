@@ -4,22 +4,14 @@
   (:import-from :split-sequence :split-sequence)
   (:import-from :com.cvberry.wordstat :bootstrap-image *total-stat-store*)
   (:import-from :com.cvberry.stringops :split-and-strip :get-leading-text)
-  (:export :file-index
-	   :file-index-url
-	   :file-index-title
-	   :file-index-keywords
-	   :file-index-timeindexed
-	   :file-index-description
-	   :file-index-outgoinglinks
-	   :file-index-position-hash
-	   :file-index-keywords-freq-hash
-	   :wordentry-numpositions
+  (:export :wordentry-numpositions
 	   :read-file-index-from-disk
 	   :read-file-index-from-file
 	   :store-file-index-to-disk
 	   :create-file-index
 	   :create-file-index-from-plain-file
-	   :pathescape))
+	   :pathescape
+	   :wordentry))
 
 (in-package :com.cvberry.file-index)
 
@@ -117,13 +109,13 @@
   (make-load-form-saving-slots w))
 
 
-
-
 ;;;STUFF THAT CAN PROBABLY STAY PRIVATE
 (defun write-file-index-to-file (fileindex filename)
+  "returns filename"
   (with-open-file (out filename :direction :output :if-exists :supersede)
     (with-standard-io-syntax
-      (write-file-index-to-stream fileindex out ))))
+      (write-file-index-to-stream fileindex out)))
+  filename)
 
 (defun write-file-index-to-stream (fileindex stream)
   "takes in list of file-stat objects, a filename, and header text
@@ -173,5 +165,11 @@
 	   (setf pos (1+ pos))))
     pos))
 
-(let ((pack (find-package :file-index)))
-  (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack) (export sym))))
+;;;EXPORT ALL FUNCTION SYMBOLS FROM THIS PACKAGE!
+(let ((pack (find-package :com.cvberry.file-index)))
+  (do-all-symbols (sym pack) 
+    (when (and (eql (symbol-package sym) pack)
+	       (handler-case (symbol-function sym)
+		 (error (text) (declare (ignore text)) nil)))
+      ;;(format t "exporting ~a from test-file! ~%" sym)
+      (export sym))))

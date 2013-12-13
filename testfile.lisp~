@@ -1,0 +1,13 @@
+(defpackage :com.cvberry.test-file
+  (:nicknames :test-file))
+
+(in-package :com.cvberry.test-file)
+
+(defun tester (alpha1 &optional (beta2 nil))
+  (format t "alpha1 ~a beta2 ~a~%" alpha1 beta2))
+
+;;;EXPORTING ALL SYMBOLS FROM THIS PACKAGE!
+(let ((pack (find-package :com.cvberry.test-file)))
+  (do-all-symbols (sym pack) (when (eql (symbol-package sym) pack)
+			       (format t "exporting ~a from test-test! ~%" sym)
+			       (export sym))))

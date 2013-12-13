@@ -32,7 +32,7 @@
   (list :siteroot "http://www.cvberry.com"
 	:stayonsite t
 	:depth 5
-	:directory "cvberryindex/"
+	:directory "index_cvberry/"
 	:directories-to-avoid nil
 ))
 
@@ -40,23 +40,40 @@
   (list :siteroot "http://www.sosmath.com"
 	:stayonsite t
 	:depth 4
-	:directory "sosindex/"
+	:directory "index_sosmath/"
 	:directories-to-avoid '("http://www.sosmath.com/CBB" "http://www.sosmath.com/memberlist")
 ))
-
-(defun make-directories-to-avoid-list (root dirs)
-  (loop for dir in dirs collect
-       (concatenate 'string root dir)))
 
 (defparameter clikisite
   (list :siteroot "http://www.cliki.net"
 	:stayonsite t
 	:depth 6
-	:directory "clikiindex2/"
+	:directory "index_cliki/"
 	:directories-to-avoid '("http://www.cliki.net/site")))
 
+;; (defparameter dailywtfsite
+;;   (list :siteroot "http://www.thedailywtf.com"
+;; 	:stayonsite t
+;; 	:depth 4
+;; 	:directory "thedailywtfindex/"
+;; 	:directories-to-avoid (make-directories-to-avoid-list "http://www.thedailywtf.com" '(
+;; 								"/Resources/"
+;; 								"/Admin/"
+;; 								"/Comments/"))))
 
-(defparameter *currentsite* clikisite)
+(defparameter greystonesite
+  (list :siteroot "http://www.campgreystone.com"
+	:stayonsite t
+	:depth 5
+	:directory "index_greystone/"
+	:directories-to-avoid '("http://www.campgreystone.com/live" "http://www.campgreystone.com/news/photos")))
+
+
+(defparameter *currentsite* cvberrysite)
+
+(defun make-directories-to-avoid-list (root dirs)
+  (loop for dir in dirs collect
+       (concatenate 'string root dir)))
 
 (defun setup-search-wrapper ()
   (setf *tinfo* (setup-search 

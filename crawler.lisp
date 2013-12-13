@@ -34,7 +34,7 @@
        (if exists
 	   (if (> (- (get-universal-time) v) ,time-between)
 	       t)
-       t))))
+	   t))))
 
 (defun flex-dom-map2 (recurse-p fn node)
   "fn is applied to each visited nodee
@@ -54,12 +54,11 @@
 
 (defun scrapetext2 (top-node)
   (remove-newlines (with-output-to-string (s) 
-    (flex-dom-map2 
-     #'standard-recurse-p
-     (lambda (node) (if (equal (html5-parser:node-type node) :TEXT)
-			(format s " ~a " (html5-parser:node-value node))))
-     top-node))))
-
+		     (flex-dom-map2 
+		      #'standard-recurse-p
+		      (lambda (node) (if (equal (html5-parser:node-type node) :TEXT)
+					 (format s " ~a " (html5-parser:node-value node))))
+		      top-node))))
 
 (defun remove-newlines (str)
   (remove-if (lambda (ch) (or (eql ch #\return)
@@ -98,7 +97,7 @@
    (lambda (node) (if (equalp (node-name node) "meta")
 		      (if (equalp (element-attribute node "name") meta-name)
 			  (let ((content (element-attribute node "content")))
-				(return-from get-meta-content-list (split-and-strip content))))))
+			    (return-from get-meta-content-list (split-and-strip content))))))
    dom-node))
 
 (defun get-description (dom-node)
@@ -107,7 +106,7 @@
    (lambda (node) (if (equalp (node-name node) "meta")
 		      (if (equalp (element-attribute node "name") "description")
 			  (let ((content (element-attribute node "content")))
-				(return-from get-description content)))))
+			    (return-from get-description content)))))
    dom-node))
 
 
@@ -135,31 +134,31 @@
   ;;first check if this is even an http link
   (handler-case 
       (progn
-  (if (or (eql (length link) 0)
-	  (eql (elt link 0) #\#))
-      (return-from process-site-link nil))
-  (if (ppcre:scan "^([a-zA-Z])+:.*$" link) ;then we do have a uri in front of link!
-      (if (not (ppcre:scan "^http:.*$" link)) ;then we don't support the protocol!
-	  (return-from process-site-link nil)))
-  (if (ppcre:scan "#" link) ;don't support in page links
-      (return-from process-site-link nil))
-  (if (and (>= (length link) 5)
-	   (equalp (subseq link 0 5) "http:"))  ;if it's an absolute link return it unharmed
-      link 
-      (with-output-to-string (collector) (puri:RENDER-URI (puri:merge-uris (puri:parse-uri link) (puri:parse-uri currenturl)) collector))))
+	(if (or (eql (length link) 0)
+		(eql (elt link 0) #\#))
+	    (return-from process-site-link nil))
+	(if (ppcre:scan "^([a-zA-Z])+:.*$" link) ;then we do have a uri in front of link!
+	    (if (not (ppcre:scan "^http:.*$" link)) ;then we don't support the protocol!
+		(return-from process-site-link nil)))
+	(if (ppcre:scan "#" link) ;don't support in page links
+	    (return-from process-site-link nil))
+	(if (and (>= (length link) 5)
+		 (equalp (subseq link 0 5) "http:"))  ;if it's an absolute link return it unharmed
+	    link 
+	    (with-output-to-string (collector) (puri:RENDER-URI (puri:merge-uris (puri:parse-uri link) (puri:parse-uri currenturl)) collector))))
     (error (text) (progn (format t "error in process-link ~a" text) nil))))
 ;;else let puri work its magic
-      ;; (if (equalp (elt link 0) #\/) ;if starts with slash return root+link
-      ;; 	  (let ((rooturl (get-site-root currenturl))) 
-      ;; 	    (if rooturl
-      ;; 		(concatenate 'string rooturl link)))
-      ;; 	  (let ((fixedurl (if (equal #\/ (last-elt currenturl))  ;else this is relative link
-      ;; 			      currenturl
-      ;; 			      (if (ppcre:scan "^http://.*/.$*" currenturl) ;then I can strip down w/ slash
-      ;; 				  (multiple-value-bind (start end) (ppcre:scan ".*/" currenturl)
-      ;; 				    (subseq currenturl start end))
-      ;; 				  (concatenate 'string currenturl "/")))))
-      ;; 	    (concatenate 'string fixedurl link)))
+;; (if (equalp (elt link 0) #\/) ;if starts with slash return root+link
+;; 	  (let ((rooturl (get-site-root currenturl))) 
+;; 	    (if rooturl
+;; 		(concatenate 'string rooturl link)))
+;; 	  (let ((fixedurl (if (equal #\/ (last-elt currenturl))  ;else this is relative link
+;; 			      currenturl
+;; 			      (if (ppcre:scan "^http://.*/.$*" currenturl) ;then I can strip down w/ slash
+;; 				  (multiple-value-bind (start end) (ppcre:scan ".*/" currenturl)
+;; 				    (subseq currenturl start end))
+;; 				  (concatenate 'string currenturl "/")))))
+;; 	    (concatenate 'string fixedurl link)))
 
 
 (defun get-site-root (url)
@@ -175,6 +174,7 @@
 (defun index-web-page (url)
   "returns nil if the contents of url are not of mime type text/html or text/plain"
   (multiple-value-bind (body status headers uri) (drakma:http-request url :connection-timeout 5)
+    (declare (ignore uri))
     (if (eql status 200)
 	(let* ((content-type (cdr (assoc :CONTENT-TYPE headers))))
 	  (if (ppcre:scan "text/html" content-type)
@@ -195,8 +195,8 @@
     (if wpageindex
 	(progn 
 	  (let* ((filename (file-index:store-file-index-to-disk wpageindex directory)))
-	  (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
-	  (update-memcache-single-file memcache filename))))))
+	    (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
+	    (update-memcache-single-file memcache filename))))))
 
 (defun index-html-file (html url)
   (let ((dom-model (parse-html5 html)))
@@ -205,8 +205,8 @@
 	     (description (get-description dom-model))
 	     (keywords (get-keywords dom-model))
 	     (links (get-links dom-model url))
-	     ;this is a hack below.  set the leading text of the site
-	     ;to the contents of the first "p" in "body"
+					;this is a hack below.  set the leading text of the site
+					;to the contents of the first "p" in "body"
 	     (textcontent (scrapetext2 (gettag dom-model "body")))
 	     (tiptext (get-tip-text dom-model description textcontent))) 
 	(create-file-index textcontent url title description keywords links tiptext)))))
@@ -233,14 +233,13 @@
 			      (return-from loopblock nil))) ;this implements the "stay 
 		      (format t "indexing ~a~%" url)
 		      (let ((wpageindex (handler-case (index-web-page url)
-					  (error (text) (format t "error indexing ~a! ~a~%" url text)))
-			      ))
+					  (error (text) (format t "error indexing ~a! ~a~%" url text)))))
+			(setf (gethash url visited-hash) (get-universal-time))
 			(if wpageindex
 			    (progn 
 			      (file-index:store-file-index-to-disk wpageindex directory)
-			      (setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
-			      (file-index-outgoinglinks wpageindex)
-			      )
+			      ;;(setf (gethash (file-index-url wpageindex) visited-hash) (get-universal-time))
+			      (file-index-outgoinglinks wpageindex))
 			    (format t "~a was not indexed.  Likely incorrect MIME type ~%" url)))))))))
     (if (not (equal current-depth maxdepth))
 	(recursive-index-sites collectedlinks visited-hash index-site-p (1+ current-depth) maxdepth directory :baseurls baseurls :directories-to-avoid directories-to-avoid))))

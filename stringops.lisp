@@ -7,7 +7,7 @@
 (in-package :com.cvberry.stringops)
 
 (defun split-and-strip (string)
-  "takes in a string and a delimiter predicate of one variable,
+  "takes in a string ,
    returns a list of words in the string and number of words found."
   ;;first clean out punctuation
   (let* ((nstring 
