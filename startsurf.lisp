@@ -1,12 +1,17 @@
-(load "breeze.asd")
-(asdf:load-system :breeze)
+(load "surf.asd")
+(load "berryutils.lisp")
 
-(defpackage startbreeze
+(asdf:load-system :surf)
+
+(defpackage startsurf
   (:use :common-lisp :com.cvberry.util))
 
-(in-package :startbreeze)
+(in-package :startsurf)
 
-(defun startbreeze ()
+(defun pprint-plist (plist)
+    (format t "~{~a:~10t~a~%~}~%" plist))
+
+(defun startsurf ()
   (let* ((currentsettings controller::*currentsite*)
 	 (numinindex 
 	  (length
@@ -32,7 +37,7 @@
 	     (format t "to scan a different site, open controller.lisp and follow the instructions there.~%"))
 	    (t 
 	     (format t "unsupported option!  try again~%")
-	     (startbreeze))))))
+	     (startsurf))))))
 
 ;;AUTOMATICALLY START THINGS UP...
-(startbreeze)
+(startsurf)

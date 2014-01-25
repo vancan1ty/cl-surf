@@ -1,8 +1,8 @@
-(ql:quickload :split-sequence)
-(ql:quickload :alexandria)
-(load "berryutils.lisp")
+;(ql:quickload :split-sequence)
+;(ql:quickload :alexandria)
+;(load "berryutils.lisp")
 ;;;word statistics package
-;;;in breeze, used only to calculate the weight of search terms
+;;;in cl-surf, used only to calculate the weight of search terms
 
 (defpackage :com.cvberry.wordstat
   (:nicknames :wordstat)
@@ -159,17 +159,6 @@
 	    frequency-hash)))
     tothash))
 
-(defun add-to-freq-table (wordlist freq-hash)
-  (loop for word in wordlist do
-       (multiple-value-bind (v exists) (gethash word freq-hash)
-	 (if exists
-	     (setf (gethash word freq-hash) (1+ v))
-					;^then we shall increment the word count for this word!
-	     (setf (gethash word freq-hash) 1) 
-					;^else we are adding the first occurrence of this word.
-	     ))))
-					;a wordlist is a sorted alist of words and their associated percent frequency in the sample.
-
 (defun num-words-in-hash (hasht)
   "returns number of total (with repetition) words in hasht"
   (let ((numwords 0))
@@ -210,6 +199,7 @@
 	     (setf (gethash word freq-hash) 1) 
 					;^else we are adding the first occurrence of this word.
 	     ))))
+
 
 (defun hasht1-diffscore-hasht2 (hasht1 hasht2 
 				&optional (words-of-interest 
@@ -275,21 +265,21 @@
 
 (defparameter *standouts* ())
 ;;;useful function to take a look at when rebuilding image...
-(defun interactive-suggestions()
-  (setf *standouts* (calc-standout-words 
-		     (slot-value (generate-file-stat "/home/vancan1ty/shared/1332Project/NYTimesIranArticle.txt") 'frequency-hash)
-		     (slot-value *total-stat-store* :wordhash)
-		     (slot-value *total-stat-store* :numwords)))
-  (subseq *standouts* 0 50)
-  (setf *wsj-iran* (generate-file-stat "/home/vancan1ty/shared/1332Project/wsjiranarticle.txt"))
-  (setf *wsj-financial* (generate-file-stat "/home/vancan1ty/shared/1332Project/wsjfinancialarticle.txt"))
-  (setf *nytimes-iran* (generate-file-stat "/home/vancan1ty/shared/1332Project/NYTimesIranArticle.txt"))
-  (setf *wp-iran* (generate-file-stat "/home/vancan1ty/shared/1332Project/washingtonpost_old_iran_article.txt"))
+;; (defun interactive-suggestions()
+;;   (setf *standouts* (calc-standout-words 
+;; 		     (slot-value (generate-file-stat "/home/vancan1ty/shared/1332Project/NYTimesIranArticle.txt") 'frequency-hash)
+;; 		     (slot-value *total-stat-store* :wordhash)
+;; 		     (slot-value *total-stat-store* :numwords)))
+;;   (subseq *standouts* 0 50)
+;;   (setf *wsj-iran* (generate-file-stat "/home/vancan1ty/shared/1332Project/wsjiranarticle.txt"))
+;;   (setf *wsj-financial* (generate-file-stat "/home/vancan1ty/shared/1332Project/wsjfinancialarticle.txt"))
+;;   (setf *nytimes-iran* (generate-file-stat "/home/vancan1ty/shared/1332Project/NYTimesIranArticle.txt"))
+;;   (setf *wp-iran* (generate-file-stat "/home/vancan1ty/shared/1332Project/washingtonpost_old_iran_article.txt"))
 
-  (format t "~$~%" (calc-hasht-diff  (frequency-hash *wsj-iran*) (frequency-hash *wsj-financial* )))
-  (format t "~$~%" (calc-hasht-diff  (frequency-hash *nytimes-iran*) (frequency-hash *wsj-iran*)))
+;;   (format t "~$~%" (calc-hasht-diff  (frequency-hash *wsj-iran*) (frequency-hash *wsj-financial* )))
+;;   (format t "~$~%" (calc-hasht-diff  (frequency-hash *nytimes-iran*) (frequency-hash *wsj-iran*)))
 
-  (format t "~$~%" (diff-hasht-important-words  (frequency-hash *wsj-iran*) (frequency-hash *nytimes-iran* ) *tothash*))
-  (standout-words-print (calc-standout-words (frequency-hash *wsj-iran*) *tothash* (num-words-in-hash *tothash*)))
-  )
-;;;////////////////////////////////
+;;   (format t "~$~%" (diff-hasht-important-words  (frequency-hash *wsj-iran*) (frequency-hash *nytimes-iran* ) *tothash*))
+;;   (standout-words-print (calc-standout-words (frequency-hash *wsj-iran*) *tothash* (num-words-in-hash *tothash*)))
+;;   )
+;; ;;;////////////////////////////////

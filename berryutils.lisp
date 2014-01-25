@@ -5,7 +5,10 @@
 	   :prompt-read
 	   :zip-plist
 	   :enumerate-hash-table
-	   :slurp-stream4))
+	   :slurp-stream4
+	   :simplify-line-endings
+	   :easy-uri-merge
+	   :slurp-file))
 
 (in-package :com.cvberry.util)
 
@@ -39,6 +42,20 @@
 
 (defun pprint-plist (plist)
     (format t "~{~a:~10t~a~%~}~%" plist))
+
+(defun simplify-line-endings (text)
+  "replaces all sorts of weird line endings with the standard cl line ending #\newline"
+  (cl-ppcre:REGEX-REPLACE-ALL "(\\r|\\n)+" text (string #\newline)))
+
+(defun easy-uri-merge (rooturl relpath)
+  "merges the relpath onto the root url, returns the result as a string"
+  (with-output-to-string (ostring) 
+    (puri:render-uri (puri:merge-uris relpath rooturl) 
+		     ostring)))
+
+(defun slurp-file (filename)
+  (with-open-file (stream filename)
+    (slurp-stream4 stream)))
 
 ;;;////////////////////////////////
 

@@ -1,25 +1,30 @@
 ;;;; -*- Mode: Lisp; Syntax: ANSI-Common-Lisp; Base: 10 -*-
-;;; Currell Bery - cl-breeze search engine system definition file
+;;; Currell Bery - cl-surf search engine system definition file
 ;;; Right now this is a work in progress...
 ;;; License: Apache License 2.0. Also please attribute my work.
-
-(defpackage #:breeze-asd
+(ql:quickload :alexandria)
+(ql:quickload :alexandria)
+(ql:quickload :drakma)
+(ql:quickload :cl-ppcre)
+(ql:quickload :cl-html5-parser)
+(ql:quickload :split-sequence)
+(ql:quickload :hunchentoot)
+(ql:quickload :cl-who)
+(defpackage #:surf-asd
   (:use :cl :asdf))
 
-
-(in-package :breeze-asd)
+(in-package :surf-asd)
 
 (ql:quickload :drakma)
 
-(defsystem breeze
-  :name "cl-breeze"
+(defsystem surf
+  :name "cl-surf"
   :version "0.2"
   :author "Currell Berry"
   :licence "Apache License 2.0 + please attribute my work."
   :description "Site search made easy"
   :depends-on (:alexandria :drakma :cl-ppcre :cl-html5-parser :split-sequence
 			   :hunchentoot :cl-who)
-  :pathname "/home/vancan1ty/1332ProjectWorking/"
   :components ((:file "berryutils")
 	       (:file "otest" :depends-on ("berryutils"))
 	       (:file "bootstrap-freq-data" :depends-on ("otest" "controller"))
@@ -29,11 +34,11 @@
 	       (:file "searcher" :depends-on ("file-index" "otest" "stringops"))
 	       (:file "mem-cache-handler" :depends-on ("otest" "stringops" "searcher" "file-index"))
 	       (:file "controller" :depends-on ("file-index" "otest" "crawler" "searcher" "mem-cache-handler"))
-	       (:file "breeze-ui" :depends-on ("controller" "berryutils"))))
+	       (:file "surf-ui" :depends-on ("controller" "berryutils"))))
 
 
-(defsystem breeze-test
-  :name "breeze-test"
-  :description "unit tests for breeze"
-  :depends-on (:breeze)
+(defsystem surf-test
+  :name "surf-test"
+  :description "unit tests for surf"
+  :depends-on (:surf)
   :components ((:file "unittests")))

@@ -19,6 +19,11 @@
 
 (in-package :com.cvberry.controller)
 
+(defun make-directories-to-avoid-list (root dirs)
+  (loop for dir in dirs collect
+       (concatenate 'string root dir)))
+
+
 (defstruct site-index-info
   (visited-hash ())
   (memcache ())
@@ -51,15 +56,15 @@
 	:directory "index_cliki/"
 	:directories-to-avoid '("http://www.cliki.net/site")))
 
-;; (defparameter dailywtfsite
-;;   (list :siteroot "http://www.thedailywtf.com"
-;; 	:stayonsite t
-;; 	:depth 4
-;; 	:directory "thedailywtfindex/"
-;; 	:directories-to-avoid (make-directories-to-avoid-list "http://www.thedailywtf.com" '(
-;; 								"/Resources/"
-;; 								"/Admin/"
-;; 								"/Comments/"))))
+(defparameter dailywtfsite
+  (list :siteroot "http://www.thedailywtf.com"
+ 	:stayonsite t
+ 	:depth 4
+ 	:directory "thedailywtfindex/"
+ 	:directories-to-avoid (make-directories-to-avoid-list "http://www.thedailywtf.com" '(
+											     "/Resources/"
+											     "/Admin/"
+											     "/Comments/"))))
 
 (defparameter greystonesite
   (list :siteroot "http://www.campgreystone.com"
@@ -69,11 +74,7 @@
 	:directories-to-avoid '("http://www.campgreystone.com/live" "http://www.campgreystone.com/news/photos")))
 
 
-(defparameter *currentsite* cvberrysite)
-
-(defun make-directories-to-avoid-list (root dirs)
-  (loop for dir in dirs collect
-       (concatenate 'string root dir)))
+(defparameter *currentsite* dailywtfsite)
 
 (defun setup-search-wrapper ()
   (setf *tinfo* (setup-search 

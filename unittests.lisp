@@ -1,6 +1,6 @@
 ;gigamonkeys unit testing!
 
-(defpackage :com.cvberry.breeze-tester
+(defpackage :com.cvberry.surf-tester
   (:nicknames :tester)
   (:use :common-lisp 
 	:alexandria 
@@ -22,7 +22,7 @@
 (import 'com.cvberry.searcher::get-top-matches)
 (import 'com.cvberry.stringops::strip-word)
 
-(in-package :com.cvberry.breeze-tester)
+(in-package :com.cvberry.surf-tester)
 (load "gigamonkeys.lisp")
 
 (deftest run-tests ()

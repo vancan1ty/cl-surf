@@ -3,9 +3,9 @@
 ;;;; You may use or modify this program for any purpose, but please 
 ;;;; include my name in the source.
 
-(defpackage :breeze-web-interface
+(defpackage :surf-web-interface
   (:use :common-lisp :hunchentoot :cl-who :com.cvberry.controller :com.cvberry.util))
-(in-package :breeze-web-interface)
+(in-package :surf-web-interface)
 
 ;;replace this with your installation directory...
 (defvar *install-dir* #p"/home/vancan1ty/1332ProjectWorking/web/") 
@@ -38,12 +38,12 @@
 	     (setf end 10)))
   (with-html-output-to-string (*standard-output* nil :prologue t :indent t)
     (:html
-     (:head (:title "cl-breeze web search")
+     (:head (:title "cl-surf web search")
 	    (:link :href "styles.css" :type "text/css" :rel "stylesheet" nil))
      (:body
       (:div :id "wrapper"
 	    (:div :id "toparea"
-		  (:h1 "cl-breeze")
+		  (:h1 "cl-surf")
 		  (:p (:form
 		       :method :get
 		       (:input :type :text

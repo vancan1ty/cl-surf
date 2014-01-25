@@ -232,9 +232,9 @@
 			  (if (not (find (get-site-root url) baseurls :test #'equalp))
 			      (return-from loopblock nil))) ;this implements the "stay 
 		      (format t "indexing ~a~%" url)
+		      (setf (gethash url visited-hash) (get-universal-time))
 		      (let ((wpageindex (handler-case (index-web-page url)
 					  (error (text) (format t "error indexing ~a! ~a~%" url text)))))
-			(setf (gethash url visited-hash) (get-universal-time))
 			(if wpageindex
 			    (progn 
 			      (file-index:store-file-index-to-disk wpageindex directory)
